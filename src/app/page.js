@@ -69,7 +69,7 @@ export default function Home() {
                     </span>
                   </div>
                   <h2 className="text-xl font-semibold mb-2">
-                    McDonald's Crew Member
+                    McDonald&apos;s Crew Member
                   </h2>
                   <p className="text-gray-700 mb-3">
                     Part-time role developing customer service skills and
@@ -141,7 +141,7 @@ export default function Home() {
                     </span>
                   </div>
                   <h2 className="text-xl font-semibold mb-2">
-                    Oliver's Gardening Services
+                    Oliver&apos;s Gardening Services
                   </h2>
                   <p className="text-gray-700 mb-3">
                     Summer work developing practical skills and work ethic in

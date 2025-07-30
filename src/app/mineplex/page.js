@@ -26,7 +26,7 @@ export default function MineplexPage() {
       <p className="text-gray-600 text-xl mt-4">
         Unfortunately, Mineplex has faced challenges in recent years, leading to
         a decline in its player base and eventual shutdown. Despite this, it
-        remains a nostalgic part of many players' Minecraft experiences, and has
+        remains a nostalgic part of many players&apos; Minecraft experiences, and has
         been recently revived.
       </p>
       {/* separator */}
