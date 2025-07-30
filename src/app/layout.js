@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono, Onest } from "next/font/google";
 import "./globals.css";
+import Navbar from "@/components/navbar";
 
 const onest = Onest({ subsets: ["latin"] });
 
@@ -14,7 +15,10 @@ export default function RootLayout({ children }) {
       <body
         className={`${onest.className} antialiased`}
       >
-        {children}
+        <Navbar />
+        <main className="container mx-auto px-4">
+          {children}
+        </main>
       </body>
     </html>
   );
