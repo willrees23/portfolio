@@ -38,7 +38,7 @@ export default function AuditTable({ logs: initialLogs, initialPage }) {
             {logs.map((log) => (
               <tr key={log.id}>
                 <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                  {new Date(log.createdAt).toLocaleString()}
+                  {new Date(log.createdAt).toISOString().replace("T", " ").slice(0, 19)}
                 </td>
                 <td className="px-4 py-3">{log.actorUsername || "System"}</td>
                 <td className="px-4 py-3">

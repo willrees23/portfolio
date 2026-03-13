@@ -1,18 +1,16 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
 
-export default function ImageUpload({ csrfToken }) {
+export default function ImageUpload({ csrfToken, onUploadComplete }) {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
-  const router = useRouter();
 
   const validateFile = (file) => {
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -49,7 +47,12 @@ export default function ImageUpload({ csrfToken }) {
     xhr.addEventListener("load", () => {
       setUploading(false);
       if (xhr.status === 201) {
-        router.refresh();
+        try {
+          const data = JSON.parse(xhr.responseText);
+          onUploadComplete?.(data.image);
+        } catch {
+          onUploadComplete?.();
+        }
       } else {
         try {
           const data = JSON.parse(xhr.responseText);
@@ -68,7 +71,7 @@ export default function ImageUpload({ csrfToken }) {
     xhr.open("POST", "/api/admin/images");
     xhr.setRequestHeader("x-csrf-token", csrfToken);
     xhr.send(formData);
-  }, [csrfToken, router]);
+  }, [csrfToken, onUploadComplete]);
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -80,6 +83,7 @@ export default function ImageUpload({ csrfToken }) {
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) uploadFile(file);
+    e.target.value = "";
   };
 
   return (

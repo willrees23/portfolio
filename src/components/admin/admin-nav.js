@@ -3,17 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-export default function AdminNav({ username, role, csrfToken }) {
+export default function AdminNav({ username, role }) {
   const pathname = usePathname();
   const router = useRouter();
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      headers: { "x-csrf-token": csrfToken },
-    });
-    router.push("/admin/login");
-    router.refresh();
+    const res = await fetch("/api/auth/logout", { method: "POST" });
+    if (res.ok) {
+      window.location.href = "/admin/login";
+    }
   }
 
   const links = [

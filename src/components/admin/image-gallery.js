@@ -8,8 +8,30 @@ function formatFileSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-export default function ImageGallery({ images: initialImages, csrfToken }) {
-  const [images, setImages] = useState(initialImages);
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+  return Promise.resolve();
+}
+
+export default function ImageGallery({ images, csrfToken, onDelete }) {
   const [preview, setPreview] = useState(null);
   const [copied, setCopied] = useState(null);
 
@@ -22,14 +44,14 @@ export default function ImageGallery({ images: initialImages, csrfToken }) {
     });
 
     if (res.ok) {
-      setImages((prev) => prev.filter((img) => img.id !== id));
+      onDelete?.(id);
       if (preview?.id === id) setPreview(null);
     }
   }
 
   function copyLink(filename) {
     const baseUrl = window.location.origin;
-    navigator.clipboard.writeText(`${baseUrl}/api/images/${filename}`);
+    copyToClipboard(`${baseUrl}/api/images/${filename}`);
     setCopied(filename);
     setTimeout(() => setCopied(null), 2000);
   }
@@ -60,7 +82,7 @@ export default function ImageGallery({ images: initialImages, csrfToken }) {
                   {formatFileSize(img.fileSize)} &middot; {img.uploaderUsername}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {new Date(img.createdAt).toLocaleDateString()}
+                  {formatDate(img.createdAt)}
                 </p>
                 <div className="flex gap-2 mt-2">
                   <button
@@ -82,7 +104,6 @@ export default function ImageGallery({ images: initialImages, csrfToken }) {
         </div>
       )}
 
-      {/* Preview Modal */}
       {preview && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-8"
