@@ -2,19 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
 
-export default function AdminNav({ username, role }) {
+export default function AdminNav({ username, role, csrfToken }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [csrfToken, setCsrfToken] = useState("");
-
-  useEffect(() => {
-    fetch("/api/auth/csrf")
-      .then((res) => res.json())
-      .then((data) => setCsrfToken(data.token))
-      .catch(() => {});
-  }, []);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", {

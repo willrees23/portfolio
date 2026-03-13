@@ -5,7 +5,6 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { verifyPassword } from "@/lib/auth/password";
 import { getSession } from "@/lib/auth/session";
-import { validateCsrfToken } from "@/lib/auth/csrf";
 import { rateLimit } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
 
@@ -16,11 +15,6 @@ export async function POST(request) {
       { error: "Too many login attempts. Try again later." },
       { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
     );
-  }
-
-  const csrfValid = validateCsrfToken(request);
-  if (!csrfValid) {
-    return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
   }
 
   const body = await request.json();

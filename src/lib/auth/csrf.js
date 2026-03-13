@@ -1,44 +1,42 @@
 import crypto from "crypto";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
+import { getSession } from "./session.js";
 
-export const CSRF_COOKIE = "csrf_token";
 export const CSRF_HEADER = "x-csrf-token";
 
-export function createCsrfToken() {
-  return crypto.randomBytes(32).toString("hex");
-}
-
 export async function generateCsrfToken() {
-  const token = createCsrfToken();
-  const headerStore = await headers();
-  const isSecure = headerStore.get("x-forwarded-proto") === "https";
   const cookieStore = await cookies();
-  cookieStore.set(CSRF_COOKIE, token, {
-    httpOnly: false,
-    secure: isSecure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+  const session = await getSession(cookieStore);
+  const token = crypto.randomBytes(32).toString("hex");
+  session.csrfToken = token;
+  await session.save();
   return token;
 }
 
-export function validateCsrfToken(request) {
+export async function getCsrfToken() {
+  const cookieStore = await cookies();
+  const session = await getSession(cookieStore);
+  if (!session.csrfToken) {
+    return generateCsrfToken();
+  }
+  return session.csrfToken;
+}
+
+export async function validateCsrfToken(request) {
   const headerToken = request.headers.get(CSRF_HEADER);
-  const cookieToken = request.cookies?.get(CSRF_COOKIE)?.value;
+  if (!headerToken) return false;
 
-  if (!headerToken || !cookieToken) {
-    return false;
-  }
+  const cookieStore = await cookies();
+  const session = await getSession(cookieStore);
+  const sessionToken = session.csrfToken;
 
-  if (headerToken.length !== cookieToken.length) {
-    return false;
-  }
+  if (!sessionToken) return false;
+  if (headerToken.length !== sessionToken.length) return false;
 
   try {
     return crypto.timingSafeEqual(
       Buffer.from(headerToken),
-      Buffer.from(cookieToken)
+      Buffer.from(sessionToken)
     );
   } catch {
     return false;

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { getSession } from "@/lib/auth/session";
-import { generateCsrfToken } from "@/lib/auth/csrf";
+import { getCsrfToken } from "@/lib/auth/csrf";
 import UserTable from "@/components/admin/user-table";
 import { redirect } from "next/navigation";
 
@@ -14,7 +14,7 @@ export default async function UsersPage() {
     redirect("/admin");
   }
 
-  const csrfToken = await generateCsrfToken();
+  const csrfToken = await getCsrfToken();
 
   const allUsers = await db
     .select({

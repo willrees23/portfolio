@@ -2,12 +2,12 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { images, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { generateCsrfToken } from "@/lib/auth/csrf";
+import { getCsrfToken } from "@/lib/auth/csrf";
 import ImageUpload from "@/components/admin/image-upload";
 import ImageGallery from "@/components/admin/image-gallery";
 
 export default async function ImagesPage() {
-  const csrfToken = await generateCsrfToken();
+  const csrfToken = await getCsrfToken();
 
   const allImages = await db
     .select({

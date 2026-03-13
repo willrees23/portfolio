@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
@@ -8,16 +8,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [csrfToken, setCsrfToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    fetch("/api/auth/csrf")
-      .then((res) => res.json())
-      .then((data) => setCsrfToken(data.token))
-      .catch(() => setError("Failed to initialize. Please refresh."));
-  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -27,10 +19,7 @@ export default function LoginForm() {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
 
@@ -106,7 +95,7 @@ export default function LoginForm() {
       </div>
       <button
         type="submit"
-        disabled={loading || !csrfToken}
+        disabled={loading}
         className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Signing in..." : "Sign In"}
