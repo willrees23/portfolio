@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find c:UserswilliOneDriveDocumentsGitHubportfolio -type f -name *.config.* -o -name tsconfig.json -o -name .env*)",
+      "Bash(find /c/Users/willi/OneDrive/Documents/GitHub/portfolio -name \".env*\" -o -name \"middleware.*\" 2>/dev/null | grep -v node_modules | grep -v \".next\")",
+      "Bash(find /c/Users/willi/OneDrive/Documents/GitHub/portfolio/src -name \"*.css\" -o -name \"*.module.css\" 2>/dev/null | grep -v node_modules)",
+      "Bash(ls -la /c/Users/willi/OneDrive/Documents/GitHub/portfolio/ | grep -E \"\\\\.js$|\\\\.mjs$|middleware\")",
+      "Bash(pnpm add:*)",
+      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && mv src/app/page.js \"src/app/\\(portfolio\\)/page.js\" && mv src/app/mineplex/page.js \"src/app/\\(portfolio\\)/mineplex/page.js\" && rmdir src/app/mineplex)",
+      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && pnpm lint 2>&1)"
+    ]
+  }
+}
