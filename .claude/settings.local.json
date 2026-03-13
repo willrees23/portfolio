@@ -7,7 +7,8 @@
       "Bash(ls -la /c/Users/willi/OneDrive/Documents/GitHub/portfolio/ | grep -E \"\\\\.js$|\\\\.mjs$|middleware\")",
       "Bash(pnpm add:*)",
       "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && mv src/app/page.js \"src/app/\\(portfolio\\)/page.js\" && mv src/app/mineplex/page.js \"src/app/\\(portfolio\\)/mineplex/page.js\" && rmdir src/app/mineplex)",
-      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && pnpm lint 2>&1)"
+      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && pnpm lint 2>&1)",
+      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && rm -rf .next)"
     ]
   }
 }
