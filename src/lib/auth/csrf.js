@@ -1,19 +1,25 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
 
-const CSRF_COOKIE = "csrf_token";
-const CSRF_HEADER = "x-csrf-token";
+export const CSRF_COOKIE = "csrf_token";
+export const CSRF_HEADER = "x-csrf-token";
+
+export const CSRF_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  path: "/",
+  maxAge: 60 * 60 * 24,
+};
+
+export function createCsrfToken() {
+  return crypto.randomBytes(32).toString("hex");
+}
 
 export async function generateCsrfToken() {
-  const token = crypto.randomBytes(32).toString("hex");
+  const token = createCsrfToken();
   const cookieStore = await cookies();
-  cookieStore.set(CSRF_COOKIE, token, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24,
-  });
+  cookieStore.set(CSRF_COOKIE, token, CSRF_COOKIE_OPTIONS);
   return token;
 }
 

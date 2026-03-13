@@ -76,7 +76,7 @@ export default function LoginForm() {
         <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
           Password
         </label>
-        <div className="relative">
+        <div style={{ display: "flex", gap: "8px", alignItems: "stretch" }}>
           <input
             id="password"
             type={showPassword ? "text" : "password"}
@@ -84,12 +84,21 @@ export default function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="current-password"
-            className="w-full px-3 py-2 pr-16 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+            style={{
+              padding: "8px 12px",
+              fontSize: "13px",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              background: "#f9fafb",
+              color: "#374151",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
           >
             {showPassword ? "Hide" : "Show"}
           </button>
