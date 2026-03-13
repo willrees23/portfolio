@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { createCsrfToken, CSRF_COOKIE, CSRF_COOKIE_OPTIONS } from "@/lib/auth/csrf";
+import { createCsrfToken, CSRF_COOKIE } from "@/lib/auth/csrf";
 
-export async function GET() {
+export async function GET(request) {
   const token = createCsrfToken();
+  const isSecure = request.nextUrl.protocol === "https:";
   const response = NextResponse.json({ token });
-  response.cookies.set(CSRF_COOKIE, token, CSRF_COOKIE_OPTIONS);
+  response.headers.append(
+    "Set-Cookie",
+    `${CSRF_COOKIE}=${token}; Path=/; Max-Age=86400; SameSite=Lax${isSecure ? "; Secure" : ""}`
+  );
   return response;
 }
