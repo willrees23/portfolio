@@ -5,6 +5,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { verifyPassword } from "@/lib/auth/password";
 import { getSession } from "@/lib/auth/session";
+import { createCsrfToken } from "@/lib/auth/csrf";
 import { rateLimit } from "@/lib/rate-limit";
 import { logAudit } from "@/lib/audit";
 
@@ -42,6 +43,7 @@ export async function POST(request) {
   session.userId = user.id;
   session.username = user.username;
   session.role = user.role;
+  session.csrfToken = createCsrfToken();
   await session.save();
 
   await logAudit({

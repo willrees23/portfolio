@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth/session";
-import { generateCsrfToken } from "@/lib/auth/csrf";
+import { getCsrfToken } from "@/lib/auth/csrf";
 import { redirect } from "next/navigation";
 import AdminNav from "@/components/admin/admin-nav";
 
@@ -16,7 +16,7 @@ export default async function AdminProtectedLayout({ children }) {
     redirect("/admin/login");
   }
 
-  const csrfToken = await generateCsrfToken();
+  const csrfToken = await getCsrfToken();
 
   return (
     <div className="min-h-screen flex bg-gray-50">

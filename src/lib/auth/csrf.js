@@ -4,22 +4,14 @@ import { getSession } from "./session.js";
 
 export const CSRF_HEADER = "x-csrf-token";
 
-export async function generateCsrfToken() {
-  const cookieStore = await cookies();
-  const session = await getSession(cookieStore);
-  const token = crypto.randomBytes(32).toString("hex");
-  session.csrfToken = token;
-  await session.save();
-  return token;
+export function createCsrfToken() {
+  return crypto.randomBytes(32).toString("hex");
 }
 
 export async function getCsrfToken() {
   const cookieStore = await cookies();
   const session = await getSession(cookieStore);
-  if (!session.csrfToken) {
-    return generateCsrfToken();
-  }
-  return session.csrfToken;
+  return session.csrfToken || null;
 }
 
 export async function validateCsrfToken(request) {
