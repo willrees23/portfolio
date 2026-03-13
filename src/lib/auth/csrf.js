@@ -8,7 +8,7 @@ export async function generateCsrfToken() {
   const token = crypto.randomBytes(32).toString("hex");
   const cookieStore = await cookies();
   cookieStore.set(CSRF_COOKIE, token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
@@ -17,17 +17,24 @@ export async function generateCsrfToken() {
   return token;
 }
 
-export async function validateCsrfToken(request) {
+export function validateCsrfToken(request) {
   const headerToken = request.headers.get(CSRF_HEADER);
-  const cookieStore = await cookies();
-  const cookieToken = cookieStore.get(CSRF_COOKIE)?.value;
+  const cookieToken = request.cookies?.get(CSRF_COOKIE)?.value;
 
   if (!headerToken || !cookieToken) {
     return false;
   }
 
-  return crypto.timingSafeEqual(
-    Buffer.from(headerToken),
-    Buffer.from(cookieToken)
-  );
+  if (headerToken.length !== cookieToken.length) {
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(headerToken),
+      Buffer.from(cookieToken)
+    );
+  } catch {
+    return false;
+  }
 }

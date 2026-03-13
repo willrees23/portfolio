@@ -34,7 +34,7 @@ export async function POST(request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const csrfValid = await validateCsrfToken(request);
+  const csrfValid = validateCsrfToken(request);
   if (!csrfValid) {
     return NextResponse.json({ error: "Invalid CSRF token" }, { status: 403 });
   }
