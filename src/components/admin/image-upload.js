@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 const MAX_SIZE_MB = 10;
@@ -73,6 +73,23 @@ export default function ImageUpload({ csrfToken, onUploadComplete }) {
     xhr.send(formData);
   }, [csrfToken, onUploadComplete]);
 
+  useEffect(() => {
+    function handlePaste(e) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) uploadFile(file);
+          return;
+        }
+      }
+    }
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [uploadFile]);
+
   const handleDrop = (e) => {
     e.preventDefault();
     setDragOver(false);
@@ -116,7 +133,7 @@ export default function ImageUpload({ csrfToken, onUploadComplete }) {
           </div>
         ) : (
           <div>
-            <p className="text-gray-600">Drop an image here or click to browse</p>
+            <p className="text-gray-600">Drop, paste, or click to upload an image</p>
             <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF, WebP up to {MAX_SIZE_MB}MB</p>
           </div>
         )}

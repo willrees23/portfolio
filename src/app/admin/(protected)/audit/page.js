@@ -29,10 +29,15 @@ export default async function AuditPage() {
     .orderBy(desc(auditLogs.createdAt))
     .limit(50);
 
+  const serialized = logs.map((log) => ({
+    ...log,
+    createdAt: log.createdAt?.toISOString?.() ?? log.createdAt,
+  }));
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Audit Log</h1>
-      <AuditTable logs={logs} initialPage={1} />
+      <AuditTable logs={serialized} initialPage={1} />
     </div>
   );
 }

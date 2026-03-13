@@ -26,10 +26,15 @@ export default async function UsersPage() {
     })
     .from(users);
 
+  const serialized = allUsers.map((u) => ({
+    ...u,
+    createdAt: u.createdAt?.toISOString?.() ?? u.createdAt,
+  }));
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">User Management</h1>
-      <UserTable users={allUsers} csrfToken={csrfToken} currentUserId={session.userId} />
+      <UserTable users={serialized} csrfToken={csrfToken} currentUserId={session.userId} />
     </div>
   );
 }

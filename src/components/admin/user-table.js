@@ -149,7 +149,7 @@ export default function UserTable({ users: initialUsers, csrfToken, currentUserI
                   )}
                 </td>
                 <td className="px-4 py-3 text-gray-500">
-                  {new Date(user.createdAt).toISOString().slice(0, 10)}
+                  {String(user.createdAt).slice(0, 10)}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button

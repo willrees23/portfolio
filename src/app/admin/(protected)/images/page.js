@@ -25,11 +25,16 @@ export default async function ImagesPage() {
     .leftJoin(users, eq(images.uploadedBy, users.id))
     .orderBy(desc(images.createdAt));
 
+  const serialized = allImages.map((img) => ({
+    ...img,
+    createdAt: img.createdAt?.toISOString?.() ?? img.createdAt,
+  }));
+
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Images</h1>
       <ImageManager
-        initialImages={allImages}
+        initialImages={serialized}
         csrfToken={csrfToken}
         currentUsername={session.username}
       />
