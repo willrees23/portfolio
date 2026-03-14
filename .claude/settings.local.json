@@ -8,7 +8,11 @@
       "Bash(pnpm add:*)",
       "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && mv src/app/page.js \"src/app/\\(portfolio\\)/page.js\" && mv src/app/mineplex/page.js \"src/app/\\(portfolio\\)/mineplex/page.js\" && rmdir src/app/mineplex)",
       "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && pnpm lint 2>&1)",
-      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && rm -rf .next)"
+      "Bash(cd \"C:/Users/willi/OneDrive/Documents/GitHub/portfolio\" && rm -rf .next)",
+      "Bash(grep -r \"canvas\\\\|streaming\\\\|chunk\\\\|stream\\\\|Buffer\\\\|writeFile\" /c/Users/willi/OneDrive/Documents/GitHub/portfolio/src --include=\"*.js\" --include=\"*.ts\" --include=\"*.jsx\" --include=\"*.tsx\" 2>/dev/null | head -40)",
+      "Bash(find /c/Users/willi/OneDrive/Documents/GitHub/portfolio/src -type f \\\\\\( -name \"*.js\" -o -name \"*.ts\" -o -name \"*.jsx\" -o -name \"*.tsx\" \\\\\\) | xargs grep -l \"form\\\\|upload\\\\|file\" 2>/dev/null)",
+      "Bash(cd \"C:\\\\Users\\\\willi\\\\OneDrive\\\\Documents\\\\GitHub\\\\portfolio\" && npx next build 2>&1 | tail -30)",
+      "Bash(cd \"C:\\\\Users\\\\willi\\\\OneDrive\\\\Documents\\\\GitHub\\\\portfolio\" && npx next build 2>&1 | grep -i \"error\\\\|video-cropper\\\\|region-editor\\\\|video-upload\\\\|video-processing\\\\|video-jobs\\\\|Compiled\")"
     ]
   }
 }

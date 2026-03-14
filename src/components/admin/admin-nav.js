@@ -16,6 +16,7 @@ export default function AdminNav({ username, role }) {
 
   const links = [
     { href: "/admin/images", label: "Images" },
+    { href: "/admin/video-cropper", label: "Video Cropper" },
     ...(role === "admin" ? [
       { href: "/admin/users", label: "Users" },
       { href: "/admin/audit", label: "Audit Log" },
