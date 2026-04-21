@@ -13,6 +13,10 @@ export async function middleware(request) {
 
   // Protect admin routes (except login page)
   if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+    if (!process.env.SESSION_SECRET) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+
     const session = await getIronSession(request.cookies, {
       password: process.env.SESSION_SECRET,
       cookieName: "portfolio_session",

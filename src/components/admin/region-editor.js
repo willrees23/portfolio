@@ -19,9 +19,103 @@ const REGION_BORDERS = [
   "#f97316",
 ];
 const HANDLE_SIZE = 8;
+const SNAP_THRESHOLD_PX = 6;
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
+}
+
+function snapRegion({ rect, edges, mode, others, panelRect, snapEnabled, shiftHeld }) {
+  const thresholdX = SNAP_THRESHOLD_PX / panelRect.width;
+  const thresholdY = SNAP_THRESHOLD_PX / panelRect.height;
+
+  const xCandidates = [];
+  const yCandidates = [];
+  if (snapEnabled) {
+    xCandidates.push(0, 1);
+    yCandidates.push(0, 1);
+    for (const o of others) {
+      xCandidates.push(o.x, o.x + o.w);
+      yCandidates.push(o.y, o.y + o.h);
+    }
+  }
+  if (shiftHeld) {
+    xCandidates.push(0.5);
+    yCandidates.push(0.5);
+  }
+
+  const guides = [];
+  let { x, y, w, h } = rect;
+
+  const pickBest = (probeValues, candidates, threshold) => {
+    let best = null;
+    for (const pv of probeValues) {
+      for (const c of candidates) {
+        const d = Math.abs(pv - c);
+        if (d < threshold && (best == null || d < best.dist)) {
+          best = { dist: d, delta: c - pv, pos: c };
+        }
+      }
+    }
+    return best;
+  };
+
+  if (mode === "move") {
+    const xProbes = [];
+    if (edges.left) xProbes.push(x);
+    if (edges.right) xProbes.push(x + w);
+    if (shiftHeld) xProbes.push(x + w / 2);
+    const bestX = pickBest(xProbes, xCandidates, thresholdX);
+    if (bestX) {
+      x += bestX.delta;
+      guides.push({ axis: "x", pos: bestX.pos });
+    }
+
+    const yProbes = [];
+    if (edges.top) yProbes.push(y);
+    if (edges.bottom) yProbes.push(y + h);
+    if (shiftHeld) yProbes.push(y + h / 2);
+    const bestY = pickBest(yProbes, yCandidates, thresholdY);
+    if (bestY) {
+      y += bestY.delta;
+      guides.push({ axis: "y", pos: bestY.pos });
+    }
+  } else {
+    if (edges.left) {
+      const right = x + w;
+      const best = pickBest([x], xCandidates, thresholdX);
+      if (best && best.pos < right - 0.02) {
+        x = best.pos;
+        w = right - x;
+        guides.push({ axis: "x", pos: best.pos });
+      }
+    }
+    if (edges.right) {
+      const best = pickBest([x + w], xCandidates, thresholdX);
+      if (best && best.pos > x + 0.02) {
+        w = best.pos - x;
+        guides.push({ axis: "x", pos: best.pos });
+      }
+    }
+    if (edges.top) {
+      const bottom = y + h;
+      const best = pickBest([y], yCandidates, thresholdY);
+      if (best && best.pos < bottom - 0.02) {
+        y = best.pos;
+        h = bottom - y;
+        guides.push({ axis: "y", pos: best.pos });
+      }
+    }
+    if (edges.bottom) {
+      const best = pickBest([y + h], yCandidates, thresholdY);
+      if (best && best.pos > y + 0.02) {
+        h = best.pos - y;
+        guides.push({ axis: "y", pos: best.pos });
+      }
+    }
+  }
+
+  return { x, y, w, h, guides };
 }
 
 export default function RegionEditor({
@@ -37,6 +131,9 @@ export default function RegionEditor({
   const [resizing, setResizing] = useState(null);
   const [canvasDragging, setCanvasDragging] = useState(null);
   const [canvasResizing, setCanvasResizing] = useState(null);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [guides, setGuides] = useState({ source: [], canvas: [] });
 
   const videoRef = useRef(null);
   const previewCanvasRef = useRef(null);
@@ -97,6 +194,21 @@ export default function RegionEditor({
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [selectedId]);
+
+  // Track Shift key for center snapping + guide visibility
+  useEffect(() => {
+    const onDown = (e) => { if (e.key === "Shift") setShiftHeld(true); };
+    const onUp = (e) => { if (e.key === "Shift") setShiftHeld(false); };
+    const onBlur = () => setShiftHeld(false);
+    window.addEventListener("keydown", onDown);
+    window.addEventListener("keyup", onUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onDown);
+      window.removeEventListener("keyup", onUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
 
   // --- Source panel interactions ---
   const getSourceNorm = useCallback(
@@ -169,55 +281,102 @@ export default function RegionEditor({
     (e) => {
       if (drawing) {
         const pos = getSourceNorm(e);
-        const x = Math.min(drawing.startX, pos.x);
-        const y = Math.min(drawing.startY, pos.y);
-        const w = Math.abs(pos.x - drawing.startX);
-        const h = Math.abs(pos.y - drawing.startY);
-        setDrawing((prev) => ({ ...prev, x, y, w, h }));
+        const panelRect = sourceContainerRef.current.getBoundingClientRect();
+        const rawX = Math.min(drawing.startX, pos.x);
+        const rawY = Math.min(drawing.startY, pos.y);
+        const rawW = Math.abs(pos.x - drawing.startX);
+        const rawH = Math.abs(pos.y - drawing.startY);
+        const others = regions.map((r) => ({
+          x: r.sourceX, y: r.sourceY, w: r.sourceW, h: r.sourceH,
+        }));
+        const edges = {
+          left: pos.x < drawing.startX,
+          right: pos.x > drawing.startX,
+          top: pos.y < drawing.startY,
+          bottom: pos.y > drawing.startY,
+        };
+        const snapped = snapRegion({
+          rect: { x: rawX, y: rawY, w: rawW, h: rawH },
+          edges, mode: "draw", others, panelRect, snapEnabled, shiftHeld,
+        });
+        setGuides((g) => ({ ...g, source: snapped.guides }));
+        setDrawing((prev) => ({
+          ...prev, x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h,
+        }));
       } else if (dragging) {
         const pos = getSourceNorm(e);
+        const panelRect = sourceContainerRef.current.getBoundingClientRect();
+        const moving = regions.find((r) => r.id === dragging.id);
+        if (!moving) return;
+        const rawX = clamp(pos.x - dragging.offsetX, 0, 1 - moving.sourceW);
+        const rawY = clamp(pos.y - dragging.offsetY, 0, 1 - moving.sourceH);
+        const others = regions
+          .filter((r) => r.id !== dragging.id)
+          .map((r) => ({ x: r.sourceX, y: r.sourceY, w: r.sourceW, h: r.sourceH }));
+        const snapped = snapRegion({
+          rect: { x: rawX, y: rawY, w: moving.sourceW, h: moving.sourceH },
+          edges: { left: true, right: true, top: true, bottom: true },
+          mode: "move", others, panelRect, snapEnabled, shiftHeld,
+        });
+        const newX = clamp(snapped.x, 0, 1 - moving.sourceW);
+        const newY = clamp(snapped.y, 0, 1 - moving.sourceH);
+        setGuides((g) => ({ ...g, source: snapped.guides }));
         setRegions((prev) =>
-          prev.map((r) => {
-            if (r.id !== dragging.id) return r;
-            const newX = clamp(pos.x - dragging.offsetX, 0, 1 - r.sourceW);
-            const newY = clamp(pos.y - dragging.offsetY, 0, 1 - r.sourceH);
-            return { ...r, sourceX: newX, sourceY: newY };
-          })
+          prev.map((r) => (r.id === dragging.id ? { ...r, sourceX: newX, sourceY: newY } : r))
         );
       } else if (resizing) {
         const pos = getSourceNorm(e);
+        const panelRect = sourceContainerRef.current.getBoundingClientRect();
         const { edge, startPos, startRegion } = resizing;
         const dx = pos.x - startPos.x;
         const dy = pos.y - startPos.y;
 
+        let sourceX = startRegion.sourceX;
+        let sourceY = startRegion.sourceY;
+        let sourceW = startRegion.sourceW;
+        let sourceH = startRegion.sourceH;
+
+        if (edge.includes("l")) {
+          const newX = clamp(sourceX + dx, 0, sourceX + sourceW - 0.02);
+          sourceW = sourceW - (newX - sourceX);
+          sourceX = newX;
+        }
+        if (edge.includes("r")) {
+          sourceW = clamp(sourceW + dx, 0.02, 1 - sourceX);
+        }
+        if (edge.includes("t")) {
+          const newY = clamp(sourceY + dy, 0, sourceY + sourceH - 0.02);
+          sourceH = sourceH - (newY - sourceY);
+          sourceY = newY;
+        }
+        if (edge.includes("b")) {
+          sourceH = clamp(sourceH + dy, 0.02, 1 - sourceY);
+        }
+
+        const others = regions
+          .filter((r) => r.id !== resizing.id)
+          .map((r) => ({ x: r.sourceX, y: r.sourceY, w: r.sourceW, h: r.sourceH }));
+        const edges = {
+          left: edge.includes("l"),
+          right: edge.includes("r"),
+          top: edge.includes("t"),
+          bottom: edge.includes("b"),
+        };
+        const snapped = snapRegion({
+          rect: { x: sourceX, y: sourceY, w: sourceW, h: sourceH },
+          edges, mode: "resize", others, panelRect, snapEnabled, shiftHeld,
+        });
+        setGuides((g) => ({ ...g, source: snapped.guides }));
         setRegions((prev) =>
-          prev.map((r) => {
-            if (r.id !== resizing.id) return r;
-            let { sourceX, sourceY, sourceW, sourceH } = startRegion;
-
-            if (edge.includes("l")) {
-              const newX = clamp(sourceX + dx, 0, sourceX + sourceW - 0.02);
-              sourceW = sourceW - (newX - sourceX);
-              sourceX = newX;
-            }
-            if (edge.includes("r")) {
-              sourceW = clamp(sourceW + dx, 0.02, 1 - sourceX);
-            }
-            if (edge.includes("t")) {
-              const newY = clamp(sourceY + dy, 0, sourceY + sourceH - 0.02);
-              sourceH = sourceH - (newY - sourceY);
-              sourceY = newY;
-            }
-            if (edge.includes("b")) {
-              sourceH = clamp(sourceH + dy, 0.02, 1 - sourceY);
-            }
-
-            return { ...r, sourceX, sourceY, sourceW, sourceH };
-          })
+          prev.map((r) =>
+            r.id === resizing.id
+              ? { ...r, sourceX: snapped.x, sourceY: snapped.y, sourceW: snapped.w, sourceH: snapped.h }
+              : r
+          )
         );
       }
     },
-    [drawing, dragging, resizing, getSourceNorm]
+    [drawing, dragging, resizing, getSourceNorm, regions, snapEnabled, shiftHeld]
   );
 
   const handleSourceMouseUp = useCallback(() => {
@@ -307,48 +466,80 @@ export default function RegionEditor({
     (e) => {
       if (canvasDragging) {
         const pos = getCanvasNorm(e);
+        const panelRect = canvasContainerRef.current.getBoundingClientRect();
+        const moving = regions.find((r) => r.id === canvasDragging.id);
+        if (!moving) return;
+        const rawX = clamp(pos.x - canvasDragging.offsetX, 0, 1 - moving.canvasW);
+        const rawY = clamp(pos.y - canvasDragging.offsetY, 0, 1 - moving.canvasH);
+        const others = regions
+          .filter((r) => r.id !== canvasDragging.id)
+          .map((r) => ({ x: r.canvasX, y: r.canvasY, w: r.canvasW, h: r.canvasH }));
+        const snapped = snapRegion({
+          rect: { x: rawX, y: rawY, w: moving.canvasW, h: moving.canvasH },
+          edges: { left: true, right: true, top: true, bottom: true },
+          mode: "move", others, panelRect, snapEnabled, shiftHeld,
+        });
+        const newX = clamp(snapped.x, 0, 1 - moving.canvasW);
+        const newY = clamp(snapped.y, 0, 1 - moving.canvasH);
+        setGuides((g) => ({ ...g, canvas: snapped.guides }));
         setRegions((prev) =>
-          prev.map((r) => {
-            if (r.id !== canvasDragging.id) return r;
-            const newX = clamp(pos.x - canvasDragging.offsetX, 0, 1 - r.canvasW);
-            const newY = clamp(pos.y - canvasDragging.offsetY, 0, 1 - r.canvasH);
-            return { ...r, canvasX: newX, canvasY: newY };
-          })
+          prev.map((r) =>
+            r.id === canvasDragging.id ? { ...r, canvasX: newX, canvasY: newY } : r
+          )
         );
       } else if (canvasResizing) {
         const pos = getCanvasNorm(e);
+        const panelRect = canvasContainerRef.current.getBoundingClientRect();
         const { edge, startPos, startRegion } = canvasResizing;
         const dx = pos.x - startPos.x;
         const dy = pos.y - startPos.y;
 
+        let canvasX = startRegion.canvasX;
+        let canvasY = startRegion.canvasY;
+        let canvasW = startRegion.canvasW;
+        let canvasH = startRegion.canvasH;
+
+        if (edge.includes("l")) {
+          const newX = clamp(canvasX + dx, 0, canvasX + canvasW - 0.02);
+          canvasW = canvasW - (newX - canvasX);
+          canvasX = newX;
+        }
+        if (edge.includes("r")) {
+          canvasW = clamp(canvasW + dx, 0.02, 1 - canvasX);
+        }
+        if (edge.includes("t")) {
+          const newY = clamp(canvasY + dy, 0, canvasY + canvasH - 0.02);
+          canvasH = canvasH - (newY - canvasY);
+          canvasY = newY;
+        }
+        if (edge.includes("b")) {
+          canvasH = clamp(canvasH + dy, 0.02, 1 - canvasY);
+        }
+
+        const others = regions
+          .filter((r) => r.id !== canvasResizing.id)
+          .map((r) => ({ x: r.canvasX, y: r.canvasY, w: r.canvasW, h: r.canvasH }));
+        const edges = {
+          left: edge.includes("l"),
+          right: edge.includes("r"),
+          top: edge.includes("t"),
+          bottom: edge.includes("b"),
+        };
+        const snapped = snapRegion({
+          rect: { x: canvasX, y: canvasY, w: canvasW, h: canvasH },
+          edges, mode: "resize", others, panelRect, snapEnabled, shiftHeld,
+        });
+        setGuides((g) => ({ ...g, canvas: snapped.guides }));
         setRegions((prev) =>
-          prev.map((r) => {
-            if (r.id !== canvasResizing.id) return r;
-            let { canvasX, canvasY, canvasW, canvasH } = startRegion;
-
-            if (edge.includes("l")) {
-              const newX = clamp(canvasX + dx, 0, canvasX + canvasW - 0.02);
-              canvasW = canvasW - (newX - canvasX);
-              canvasX = newX;
-            }
-            if (edge.includes("r")) {
-              canvasW = clamp(canvasW + dx, 0.02, 1 - canvasX);
-            }
-            if (edge.includes("t")) {
-              const newY = clamp(canvasY + dy, 0, canvasY + canvasH - 0.02);
-              canvasH = canvasH - (newY - canvasY);
-              canvasY = newY;
-            }
-            if (edge.includes("b")) {
-              canvasH = clamp(canvasH + dy, 0.02, 1 - canvasY);
-            }
-
-            return { ...r, canvasX, canvasY, canvasW, canvasH };
-          })
+          prev.map((r) =>
+            r.id === canvasResizing.id
+              ? { ...r, canvasX: snapped.x, canvasY: snapped.y, canvasW: snapped.w, canvasH: snapped.h }
+              : r
+          )
         );
       }
     },
-    [canvasDragging, canvasResizing, getCanvasNorm]
+    [canvasDragging, canvasResizing, getCanvasNorm, regions, snapEnabled, shiftHeld]
   );
 
   const handleCanvasMouseUp = useCallback(() => {
@@ -364,6 +555,7 @@ export default function RegionEditor({
       setResizing(null);
       setCanvasDragging(null);
       setCanvasResizing(null);
+      setGuides({ source: [], canvas: [] });
     };
     window.addEventListener("mouseup", handleUp);
     return () => window.removeEventListener("mouseup", handleUp);
@@ -390,6 +582,45 @@ export default function RegionEditor({
         canvasH: r.canvasH,
       }))
     );
+  };
+
+  const renderGuides = (type) => {
+    const list = type === "source" ? guides.source : guides.canvas;
+    if (!list || list.length === 0) return null;
+    return list.map((g, i) => {
+      if (g.axis === "x") {
+        return (
+          <div
+            key={`g-${type}-${i}`}
+            style={{
+              position: "absolute",
+              left: `${g.pos * 100}%`,
+              top: 0,
+              bottom: 0,
+              width: 0,
+              borderLeft: "1px dashed rgba(255,255,255,0.85)",
+              pointerEvents: "none",
+              zIndex: 30,
+            }}
+          />
+        );
+      }
+      return (
+        <div
+          key={`g-${type}-${i}`}
+          style={{
+            position: "absolute",
+            top: `${g.pos * 100}%`,
+            left: 0,
+            right: 0,
+            height: 0,
+            borderTop: "1px dashed rgba(255,255,255,0.85)",
+            pointerEvents: "none",
+            zIndex: 30,
+          }}
+        />
+      );
+    });
   };
 
   const renderRegionOverlays = (type) => {
@@ -477,6 +708,17 @@ export default function RegionEditor({
             : `${regions.length} region${regions.length > 1 ? "s" : ""}`}
         </span>
         <div className="flex-1" />
+        <button
+          onClick={() => setSnapEnabled((v) => !v)}
+          title="Snap region edges/corners to other regions and panel edges. Hold Shift to also snap to center."
+          className={`px-3 py-1.5 text-sm rounded transition-colors ${
+            snapEnabled
+              ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+          }`}
+        >
+          Snap: {snapEnabled ? "On" : "Off"}
+        </button>
         {selectedId != null && (
           <button
             onClick={deleteSelected}
@@ -519,6 +761,7 @@ export default function RegionEditor({
               className="w-full h-full object-contain pointer-events-none"
             />
             {renderRegionOverlays("source")}
+            {renderGuides("source")}
             {/* Drawing preview */}
             {drawing && drawing.w > 0 && drawing.h > 0 && (
               <div
@@ -555,6 +798,7 @@ export default function RegionEditor({
               className="w-full h-full"
             />
             {renderRegionOverlays("canvas")}
+            {renderGuides("canvas")}
           </div>
         </div>
       </div>
